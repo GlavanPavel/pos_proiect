@@ -2,7 +2,8 @@ import asyncio
 
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from fastapi_app.services.database import sessionmanager
+from fastapi_app.services.database import sessionmanager, create_tables
+from .middlewares import middleware
 from .routers import event_manager
 
 
@@ -13,7 +14,7 @@ async def lifespan(app: FastAPI):
         # Close the DB connection
         await sessionmanager.close()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, middleware=middleware)
 app.include_router(event_manager.router)
 
 @app.get("/")

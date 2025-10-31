@@ -1,7 +1,5 @@
-from typing import Optional
-
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
-
 from fastapi_app.schemas.link import LinkCollection, Link
 
 
@@ -33,6 +31,16 @@ class EvenimentLinks(BaseModel):
     self: Link
     parent: Optional[Link] = None
 
+class EvenimentWithLinks(EvenimentSchema):
+    links: EvenimentLinks = Field(..., alias="_links")
+
 class EvenimentResponse(BaseModel):
-    event: EvenimentSchema
-    event_links: EvenimentLinks
+    event: EvenimentWithLinks
+
+class EvenimentCollectionLinks(BaseModel):
+    self: Link
+    parent: Link
+
+class EvenimentCollectionResponse(BaseModel):
+    evenimente: List[EvenimentResponse]
+    links: EvenimentCollectionLinks = Field(..., alias="_links")

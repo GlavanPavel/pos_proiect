@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base
 from fastapi_app.config import config
 
+#TODO: probabil ar trebui sa fie intr-un folder separat numit repository
+
 Base = declarative_base()
 
 class DatabaseSessionManager:

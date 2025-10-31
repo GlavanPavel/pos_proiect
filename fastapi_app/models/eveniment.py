@@ -2,6 +2,7 @@ from typing import List
 
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.ext.associationproxy import association_proxy
 
 from fastapi_app.services.database import Base
 
@@ -17,3 +18,10 @@ class Eveniment(Base):
 
     bilete: Mapped[List["Bilet"]] = relationship(back_populates="eveniment")
 
+    eveniment_associations: Mapped[List["JoinPE"]] = relationship(
+        back_populates="eveniment"
+    )
+
+    pachete: Mapped[List["Pachet"]] = association_proxy(
+        "eveniment_associations", "pachet"
+    )

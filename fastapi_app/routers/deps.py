@@ -1,10 +1,10 @@
 from typing import Annotated
 from fastapi import Depends, Request
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_app.services.database import get_db_session
 from fastapi_app.schemas.link import Link, LinkCollection
 
-SessionDep = Annotated[Session, Depends(get_db_session)]
+SessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 
 class HATEOASLinkBuilder:
     def __init__(self, self_route_name: str, parent_route_name: str):
