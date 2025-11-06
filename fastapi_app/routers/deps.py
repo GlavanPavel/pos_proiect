@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi_app.services.database import get_db_session
+from fastapi_app.core.database import get_db_session
 from fastapi_app.schemas.link import Link, LinkCollection
 
 SessionDep = Annotated[AsyncSession, Depends(get_db_session)]

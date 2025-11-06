@@ -1,15 +1,13 @@
 from fastapi import APIRouter, Depends,Query, HTTPException, Request, status
-from sqlalchemy import select
 
 from .deps import SessionDep
 from .. import services
-from ..models import Eveniment
-from fastapi_app.schemas.eveniment import EvenimentSchema, EvenimentUpdate, EvenimentCreate, EvenimentLinks, \
-    EvenimentResponse, EvenimentCollectionResponse
+from fastapi_app.schemas.eveniment import EvenimentUpdate, EvenimentCreate, EvenimentLinks, \
+    EvenimentResponse
 from ..schemas import PaginatedResponse, EventFilterParams
 from ..schemas.bilet import BiletResponse
 from ..schemas.pachet import PachetCollectionResponse
-from ..services import paginate, _build_event_response, get_all_events
+from ..services import get_all_events
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -24,7 +22,6 @@ async def get_all_events_route(
         per_page: int = Query(10, ge=1, le=100),
         filters: EventFilterParams = Depends()
 ):
-    builder = _build_event_response
     return await get_all_events(
         page=page,
         per_page=per_page,
@@ -92,6 +89,19 @@ async def get_event_packets(
         request: Request
 ):
     return await services.get_event_packets(session, id, request)
+
+@router.get(
+    "/{event_id}/tickets/",
+    response_model=PaginatedResponse[BiletResponse],
+    name="get_all_event_tickets"
+)
+async def get_all_event_tickets_route(
+        session: SessionDep,
+        event_id: int,
+        page: int = Query(1, ge=1),
+        per_page: int = Query(10, ge=1, le=100)
+):
+    return await services.get_all_event_tickets(event_id, session, page, per_page)
 
 @router.get(
     "/{event_id}/tickets/{ticket_cod}",

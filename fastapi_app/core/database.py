@@ -8,9 +8,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine, AsyncEngine,
 )
 from sqlalchemy.orm import declarative_base
-from fastapi_app.config import config
-
-#TODO: probabil ar trebui sa fie intr-un folder separat numit repository
+from fastapi_app.core.config import config
 
 Base = declarative_base()
 

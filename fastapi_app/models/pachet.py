@@ -4,7 +4,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from fastapi_app.services.database import Base
+from fastapi_app.core.database import Base
 
 class Pachet(Base):
     __tablename__ = "pachet"

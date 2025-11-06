@@ -2,7 +2,7 @@ from typing import Optional
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from fastapi_app.services.database import Base
+from fastapi_app.core.database import Base
 
 # sqlalchemy 2.0
 class Bilet(Base):

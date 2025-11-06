@@ -14,11 +14,7 @@ class EventFilterParams(BaseModel):
 class PachetFilterParams(BaseModel):
     type: Optional[str] = Query(
         None,
-        description="Filtru dupa nume partial",
-    )
-    event_name: Optional[str] = Query(
-        None,
-        description="Filtru dupa numele evenimentului"
+        description="Filtru dupa tipul de eveniment",
     )
     available_tickets: Optional[int] = Query(
         None,

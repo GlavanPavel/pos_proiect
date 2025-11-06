@@ -3,14 +3,12 @@ from .deps import SessionDep
 from fastapi_app import services
 from fastapi_app.schemas.pachet import (
     PachetCreate,
-    PachetResponse,
+    PachetResponse, PachetEventAssociation,
 )
-from sqlalchemy import select
 from fastapi_app.schemas.bilet import BiletResponse
 from fastapi_app.schemas.eveniment import EvenimentCollectionResponse
-from ..models import Eveniment, Pachet
-from ..schemas import PaginatedResponse
-from ..services import _build_pachet_response, paginate
+from ..schemas import PaginatedResponse, PachetFilterParams, PachetEventAssociationResponse
+from ..services import get_all_packets
 
 router = APIRouter(prefix="/event-packets", tags=["pachete"])
 
@@ -22,15 +20,14 @@ router = APIRouter(prefix="/event-packets", tags=["pachete"])
 async def get_all_events_route(
         session: SessionDep,
         page: int = Query(1, ge=1),
-        per_page: int = Query(10, ge=1, le=100)
+        per_page: int = Query(10, ge=1, le=100),
+        filters: PachetFilterParams = Depends()
 ):
-    builder = _build_pachet_response
-    return await paginate(
-        query=select(Pachet),
+    return await get_all_packets(
         page=page,
         per_page=per_page,
         session=session,
-        builder=builder
+        filters=filters
     )
 
 
@@ -95,6 +92,54 @@ async def get_pachet_events_route(
 ):
     return await services.get_pachet_events(id, session, request)
 
+@router.put(
+    "/{pachet_id}/events/{event_id}",
+    name="add_event_to_pachet",
+    response_model=PachetEventAssociationResponse
+)
+async def add_event_to_pachet_route(
+        pachet_id: int,
+        event_id: int,
+        data: PachetEventAssociation,
+        session: SessionDep,
+        request: Request
+):
+    return await services.add_event_to_pachet(
+        pachet_id=pachet_id,
+        event_id=event_id,
+        data=data,
+        session=session,
+        request=request
+    )
+
+@router.delete(
+    "/{pachet_id}/events/{event_id}",
+    name="delete_event_from_pachet",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_event_from_pachet_route(
+        pachet_id: int,
+        event_id: int,
+        session: SessionDep,
+):
+    return await services.delete_event_from_pachet(
+        pachet_id=pachet_id,
+        event_id=event_id,
+        session=session,
+    )
+
+@router.get(
+    "/{pachet_id}/tickets/",
+    name="get_all_pachet_tickets",
+    response_model=PaginatedResponse[BiletResponse]
+)
+async def get_all_pachet_tickets_route(
+        session: SessionDep,
+        pachet_id: int,
+        page: int = Query(1, ge=1),
+        per_page: int = Query(10, ge=1, le=100),
+):
+    return await services.get_all_pachet_tickets(pachet_id, session, page, per_page)
 @router.get(
     "/{pachet_id}/tickets/{ticket_cod}",
     name="get_pachet_ticket",

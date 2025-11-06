@@ -36,3 +36,6 @@ class PachetCollectionLinks(BaseModel):
 class PachetCollectionResponse(BaseModel):
     pachete: List[PachetResponse]
     links: PachetCollectionLinks = Field(..., alias="_links")
+
+class PachetEventAssociation(BaseModel):
+    numarLocuri: int = Field(..., gt=0)

@@ -4,26 +4,18 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from fastapi_app.models import Eveniment, JoinPE, Bilet
-from fastapi_app.schemas.bilet import BiletSchema, BiletResponse, BiletWithLinks
+from fastapi_app.schemas.bilet import BiletResponse
 from fastapi_app.schemas.eveniment import (
     EvenimentResponse,
     EvenimentUpdate,
-    EvenimentCreate, EvenimentCollectionResponse, EvenimentCollectionLinks,
-)
+    EvenimentCreate, )
 from fastapi_app.schemas.link import Link
 from fastapi_app.schemas.pachet import PachetResponse, PachetCollectionResponse, \
     PachetCollectionLinks
-from .pagination import paginate
-from .builder import _build_event_response, _build_pachet_response, _build_bilet_links, _build_bilet_response
+from .helper import _get_event_db
+from fastapi_app.core.pagination import paginate
+from .builder import _build_event_response, _build_pachet_response, _build_bilet_response
 from ..schemas import EventFilterParams, PaginatedResponse
-
-
-async def _get_event_db(session: AsyncSession, id: int) -> Eveniment:
-    result = await session.execute(select(Eveniment).where(Eveniment.id == id))
-    event = result.scalars().first()
-    if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
-    return event
 
 
 async def get_all_events(
@@ -42,12 +34,26 @@ async def get_all_events(
         filter_conditions.append(Eveniment.nume.ilike(f"%{filters.name}%"))
 
     if filters.available_tickets is not None:
-        sold_tickets_sq = (
+        # nr de bilete vandute direct
+        sold_individually_sq = (
             select(func.count(Bilet.cod))
             .where(Bilet.evenimentID == Eveniment.id)
             .scalar_subquery()
         )
-        available = func.coalesce(Eveniment.numarLocuri, 0) - func.coalesce(sold_tickets_sq, 0)
+
+        # nr de bilete rezervate unui pachet
+        allocated_to_packets_sq = (
+            select(func.sum(JoinPE.numarLocuri))
+            .where(JoinPE.evenimentID == Eveniment.id)
+            .scalar_subquery()
+        )
+
+        available = (
+                func.coalesce(Eveniment.numarLocuri, 0) -
+                func.coalesce(allocated_to_packets_sq, 0) -
+                func.coalesce(sold_individually_sq, 0)
+        )
+
         filter_conditions.append(available >= filters.available_tickets)
 
     if filter_conditions:
@@ -91,8 +97,26 @@ async def update_event(session: AsyncSession, id: int, data: EvenimentUpdate, re
     return _build_event_response(event, request)
 
 
-async def delete_event(session: AsyncSession, id: int) -> dict:
+async def delete_event(session: AsyncSession, id: int):
     event = await _get_event_db(session, id)
+
+    sold_query = select(func.count(Bilet.cod)).where(Bilet.evenimentID == id)
+    sold_tickets = (await session.execute(sold_query)).scalar_one()
+
+    if sold_tickets > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Evenimentul nu poate fi sters. {sold_tickets} bilete au fost vandute pentru el."
+        )
+
+    join_query = select(func.count(JoinPE.pachetID)).where(JoinPE.evenimentID == id)
+    associated_packets = (await session.execute(join_query)).scalar_one()
+
+    if associated_packets > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Evenimentul nu poate fi sters. El face parte din {associated_packets} pachete."
+        )
 
     await session.delete(event)
     await session.commit()
@@ -113,7 +137,7 @@ async def get_event_packets(session: AsyncSession, id: int, request: Request) ->
     event = result.scalars().first()
 
     if not event:
-        raise HTTPException(status_code=404, detail="Event not found")
+        raise HTTPException(status_code=404, detail="Evenimentul n-a fost gasit")
 
     pachete_list: List[PachetResponse] = []
     for pachet in event.pachete:
@@ -149,7 +173,24 @@ async def get_event_ticket(event_id, ticket_cod, session, request) -> BiletRespo
     if not ticket:
         raise HTTPException(
             status_code=404,
-            detail=f"Ticket with code {ticket_cod} not found for event {event_id}"
+            detail=f"Biletul cu codul {ticket_cod} n-a fost gasit pentru evenimentul cu id-ul {event_id}"
         )
 
     return _build_bilet_response(ticket, request)
+
+async def get_all_event_tickets(
+        event_id: int,
+        session: AsyncSession,
+        page: int,
+        per_page: int
+) -> PaginatedResponse[BiletResponse]:
+    await _get_event_db(session, event_id)
+    query = select(Bilet).where(Bilet.evenimentID == event_id).order_by(Bilet.cod.desc())
+
+    return await paginate(
+        query=query,
+        page=page,
+        per_page=per_page,
+        session=session,
+        builder=_build_bilet_response
+    )

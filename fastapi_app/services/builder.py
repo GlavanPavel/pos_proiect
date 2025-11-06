@@ -1,16 +1,19 @@
 from fastapi import Request, HTTPException
-from fastapi_app.models import Pachet, Eveniment, Bilet
+from fastapi_app.models import Pachet, Eveniment, Bilet, JoinPE
 from fastapi_app.schemas import (
     PachetSchema, Link, EvenimentLinks, EvenimentSchema, EvenimentWithLinks,
     EvenimentResponse, PachetLinks, PachetResponse, PachetWithLinks,
-    BiletLinks, BiletSchema, BiletWithLinks, BiletResponse
+    BiletLinks, BiletSchema, BiletWithLinks, BiletResponse, PachetEventAssociationLinks, PachetEventAssociationSchema,
+    PachetEventAssociationResponse, PachetEventAssociationWithLinks
 )
 
 
 def _build_event_links(event: Eveniment, request: Request) -> EvenimentLinks:
     self_href = request.url_for("get_event", id=event.id)
+    parent_href = request.url_for("get_all_events")
     return EvenimentLinks(
         self=Link(href=str(self_href), method="GET"),
+        parent=Link(href=str(parent_href), method="GET"),
     )
 
 
@@ -27,8 +30,10 @@ def _build_event_response(event: Eveniment, request: Request) -> EvenimentRespon
 
 def _build_pachet_links(pachet: Pachet, request: Request) -> PachetLinks:
     self_href = request.url_for("get_pachet", id=pachet.id)
+    parent_href = request.url_for("get_all_packets")
     return PachetLinks(
         self=Link(href=str(self_href), method="GET"),
+        parent=Link(href=str(parent_href), method="GET"),
     )
 
 
@@ -81,3 +86,38 @@ def _build_bilet_response(
     )
 
     return BiletResponse(ticket=ticket_with_links)
+
+
+def _build_association_links(
+        join_record: JoinPE,
+        request: Request
+) -> PachetEventAssociationLinks:
+
+    self_href = request.url_for(
+        "add_event_to_pachet",
+        pachet_id=join_record.pachetID,
+        event_id=join_record.evenimentID
+    )
+    pachet_href = request.url_for("get_pachet", id=join_record.pachetID)
+    eveniment_href = request.url_for("get_event", id=join_record.evenimentID)
+
+    return PachetEventAssociationLinks(
+        self=Link(href=str(self_href), method="PUT"),
+        pachet=Link(href=str(pachet_href), method="GET"),
+        eveniment=Link(href=str(eveniment_href), method="GET")
+    )
+
+
+def _build_association_response(
+    join_record: JoinPE,
+    request: Request
+) -> PachetEventAssociationResponse:
+    data = PachetEventAssociationSchema.model_validate(join_record)
+    links = _build_association_links(join_record, request)
+
+    with_links = PachetEventAssociationWithLinks(
+        **data.model_dump(),
+        _links=links
+    )
+
+    return PachetEventAssociationResponse(asociere=with_links)

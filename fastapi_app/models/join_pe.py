@@ -1,6 +1,6 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from fastapi_app.services.database import Base
+from fastapi_app.core.database import Base
 
 class JoinPE(Base):
     __tablename__ = "join_pe"

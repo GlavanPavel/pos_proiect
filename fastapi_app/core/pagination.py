@@ -2,8 +2,8 @@ from typing import Optional, Callable, TypeVar
 from sqlalchemy import select, func, Select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
-from ..middlewares import request_object
-from ..schemas import PaginatedResponse
+from fastapi_app.core.middlewares import request_object
+from fastapi_app.schemas import PaginatedResponse
 
 T_SQL = TypeVar('T_SQL')
 T_Schema = TypeVar('T_Schema')

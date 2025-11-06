@@ -4,20 +4,12 @@ from urllib.request import Request
 from fastapi import HTTPException, Response, status
 from fastapi_app.models import Bilet
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from fastapi_app.schemas import BiletResponse, BiletCreate
 from .builder import _build_bilet_response
-from .event_service import _get_event_db
-from .packet_service import _get_pachet_db
+from .helper import _get_ticket_db, _get_pachet_db, _get_event_db, get_pachet_availability, get_event_available_seats
 
-
-async def _get_ticket_db(cod, session):
-    result = await session.execute(select(Bilet).where(Bilet.cod == cod))
-    ticket = result.scalars().first()
-    if not ticket:
-        raise HTTPException(status_code=404, detail="Bilt not found")
-    return ticket
 
 async def get_ticket(cod: str, session: AsyncSession, request: Request) -> BiletResponse:
     ticket = await _get_ticket_db(cod, session)
@@ -27,32 +19,44 @@ async def verify_ticket(data: BiletCreate, session: AsyncSession):
     if data.pachetID is None and data.evenimentID is None:
         raise HTTPException(
             status_code=400,
-            detail="Ticket must be linked to either a pachetID or an evenimentID."
+            detail="Biletul trebuie asociat unui eveniment sau pachet"
         )
     elif data.pachetID is not None and data.evenimentID is not None:
         raise HTTPException(
             status_code=400,
-            detail="Ticket cannot be linked to both a pachetID and an evenimentID."
+            detail="Biletul trebuie asociat doar unui eveniment sau pachet"
         )
 
-    # verific daca exista parintele aferent biletului
     if data.pachetID is not None:
         await _get_pachet_db(session, data.pachetID)
+        available = await get_pachet_availability(session, data.pachetID)
+
+        if available <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nu mai sunt bilete disponibile pentru pachetul {data.pachetID}."
+            )
     elif data.evenimentID is not None:
-        await _get_event_db(session, data.evenimentID)
+        eveniment = await _get_event_db(session, data.evenimentID)
+        available = await get_event_available_seats(session, eveniment)
+
+        if available <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nu mai sunt bilete disponibile pentru evenimentul {data.evenimentID}."
+            )
+
 
 async def create_ticket(data: BiletCreate, session: AsyncSession, request: Request) -> BiletResponse:
     await verify_ticket(data, session)
+
     new_cod = secrets.token_hex(12)
 
-    # verific unicitatea codului
+    # se verifica daca codul e unic
     result = await session.execute(select(Bilet).where(Bilet.cod == new_cod))
-    existing_ticket = result.scalars().first()
-
-    while existing_ticket:
+    while result.scalars().first():
         new_cod = secrets.token_hex(12)
         result = await session.execute(select(Bilet).where(Bilet.cod == new_cod))
-        existing_ticket = result.scalars().first()
 
     ticket = Bilet(
         cod=new_cod,

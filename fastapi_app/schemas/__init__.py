@@ -6,3 +6,4 @@ from .pachet import (PachetResponse, PachetLinks, PachetSchema, PachetCollection
                      PachetCollectionLinks, PachetWithLinks, PachetCreate)
 from .pagination import PaginatedResponse
 from .filters import EventFilterParams, PachetFilterParams
+from .associations import PachetEventAssociationLinks, PachetEventAssociationSchema, PachetEventAssociationResponse, PachetEventAssociationWithLinks
