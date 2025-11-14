@@ -7,20 +7,21 @@ project_root = current_file_path.parent.parent.parent
 env_file_path = project_root / ".env"
 
 class Settings(BaseSettings):
-    DB_USER: str
-    DB_PASS: str
-    DB_HOST: str
-    DB_PORT: int
-    DB_NAME: str
-    SESSION_SECRET: str
+    MONGO_APP_USER: str
+    MONGO_APP_PASS: str
+    MONGO_AUTH_SOURCE: str
+    MONGO_HOST: str = "localhost"
+    MONGO_PORT: int = 27017
+
+    EVENIMENTE_SERVICE_URL: str = "http://localhost:8001"
 
     @computed_field
     @property
-    def DATABASE_URL(self) -> str:
+    def MONGO_DATABASE_URL(self) -> str:
         return (
-            f"mysql+aiomysql://"
-            f"{self.DB_USER}:{self.DB_PASS}@"
-            f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            f"mongodb://{self.MONGO_APP_USER}:{self.MONGO_APP_PASS}@"
+            f"{self.MONGO_HOST}:{self.MONGO_PORT}/"
+            f"?authSource={self.MONGO_AUTH_SOURCE}"
         )
 
     class Config:
