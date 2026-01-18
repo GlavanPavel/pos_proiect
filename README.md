@@ -1,3 +1,16 @@
+### Detalii proiect
+Totul cu exceptia la frontend e conteinerizat. Unele containere (cele 3 servicii) au nevoie sa aiba baza de date initializata.
+Cu toate ca as fi putut automatiza acest proces cu includerea comenzilor in docker compose, am decis sa fac totul manual cu:
+```
+docker exec -it clienti-service python -m user_management.init_mongo
+docker exec -it evenimente-service python -m fastapi_app.events_init
+docker exec -it idm-service python -m auth_service.init_idm
+
+docker exec -it evenimente-service python fastapi_app/create_tables.py
+```
+Sunt generati 4 utilizatori in baza de date din auth_service (creati in auth_service/init_idm.py).
+
+
 # POS - solutii proiect
 
 | **Deadline&nbsp;general** | **_18.01.2026_** (_duminica, S14_) |
@@ -21,3 +34,4 @@ Solutiile **_remarcabile_** pot atrage bonusuri pentru nota de examen/media core
 	- sintaxa de baza: <https://www.markdownguide.org/basic-syntax/>
 	- _cheat-sheet_: <https://www.markdownguide.org/cheat-sheet/>
 2. **Github** - comenzi uzuale: <https://education.github.com/git-cheat-sheet-education.pdf>
+
