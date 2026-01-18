@@ -1,0 +1,20 @@
+clienti-service  | INFO:     Started server process [1]
+clienti-service  | INFO:     Waiting for application startup.
+clienti-service  | INFO:     Application startup complete.
+clienti-service  | INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+clienti-service  | INFO:     172.26.0.1:43796 - "OPTIONS /clienti/ HTTP/1.1" 200 OK
+clienti-service  | INFO:     172.26.0.1:43812 - "GET /clienti/ HTTP/1.1" 200 OK
+clienti-service  | INFO:     172.26.0.1:43812 - "POST /clienti/696d4ea302b57fefd908fd8a/bilete HTTP/1.1" 400 Bad Request
+clienti-service  | INFO:     172.26.0.1:42520 - "GET /clienti/ HTTP/1.1" 200 OK
+clienti-service  | INFO:     172.26.0.1:42520 - "POST /clienti/696d4ea302b57fefd908fd8a/bilete HTTP/1.1" 201 Created
+clienti-service  | INFO:     172.26.0.1:43112 - "GET /clienti/ HTTP/1.1" 200 OK
+clienti-service  | INFO:     172.26.0.1:43112 - "POST /clienti/696d4ea302b57fefd908fd8a/bilete HTTP/1.1" 201 Created
+clienti-service  | INFO:     172.26.0.1:44860 - "GET /clienti/ HTTP/1.1" 200 OK
+clienti-service  | INFO:     172.26.0.1:58612 - "POST /clienti/ HTTP/1.1" 201 Created
+clienti-service  | INFO:     172.26.0.1:48024 - "GET /clienti/ HTTP/1.1" 200 OK
+clienti-service  | INFO:     172.26.0.1:41842 - "POST /clienti/696d59194a8990f46c4d09a8/bilete HTTP/1.1" 201 Created
+clienti-service  | INFO:     172.26.0.1:53708 - "GET /clienti/696cbd4f6e89758986e42414/bilete HTTP/1.1" 404 Not Found
+clienti-service  | INFO:     172.26.0.1:53708 - "GET /clienti/696d59194a8990f46c4d09a8/bilete HTTP/1.1" 200 OK
+clienti-service  | INFO:     172.26.0.1:53712 - "GET /clienti/ HTTP/1.1" 401 Unauthorized
+clienti-service  | INFO:     172.26.0.1:34084 - "POST /clienti/ HTTP/1.1" 403 Forbidden
+clienti-service  | INFO:     172.26.0.1:42738 - "DELETE /clienti/ HTTP/1.1" 403 Forbidden

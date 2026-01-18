@@ -249,14 +249,15 @@ async def add_event_to_pachet(
         join_record.numarLocuri = data.numarLocuri
         session.add(join_record)
     else:
-        new_association = JoinPE(
+        join_record = JoinPE(
             pachetID=pachet_id,
             evenimentID=event_id,
             numarLocuri=data.numarLocuri
         )
-        session.add(new_association)
+        session.add(join_record)
 
     await session.commit()
+    await session.refresh(join_record)
 
     return _build_association_response(join_record, request)
 
