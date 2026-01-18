@@ -72,7 +72,7 @@ async def create_pachet(
     request: Request,
     owner_id: int
 ) -> PachetResponse:
-    pachet = Pachet(id_owner=owner_id, **data.model_dump())
+    pachet = Pachet(id_owner=owner_id, **data.model_dump(exclude={"id_owner"}))
     session.add(pachet)
     await session.commit()
     await session.refresh(pachet)
