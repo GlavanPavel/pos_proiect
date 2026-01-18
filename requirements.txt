@@ -9,3 +9,6 @@ PyMySQL==1.1.2
 python-dotenv==1.1.1
 pydantic_settings
 pymongo
+grpcio
+grpcio-tools
+pyjwt

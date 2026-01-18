@@ -1,6 +1,7 @@
 from typing import Annotated, Optional, List
 from pydantic.functional_validators import BeforeValidator
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from bson import ObjectId
 
 # Represents an ObjectId field in the database.
 # It will be represented as a `str` on the model so that it can be serialized to JSON.
@@ -49,5 +50,20 @@ class ClientModel(BaseModel):
         }
     )
 
+
+class UpdateClientModel(BaseModel):
+    email: Optional[EmailStr] = None
+    nume_client: Optional[ClientNameModel] = None
+    links_social: Optional[List[LinkSocialModel]] = None
+    lista_bilete: Optional[List[BiletModel]] = None
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+
 class ClientCollection(BaseModel):
     clienti: List[ClientModel]
+
+class ClientResponseModel(ClientModel):
+    links: Optional[dict] = Field(default=None, alias="_links")

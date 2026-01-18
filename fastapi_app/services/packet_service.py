@@ -66,8 +66,13 @@ async def get_pachet(id, session, request) -> PachetResponse:
     return _build_pachet_response(packet, request)
 
 
-async def create_pachet(data: PachetCreate, session: AsyncSession, request: Request) -> PachetResponse:
-    pachet = Pachet(**data.model_dump())
+async def create_pachet(
+    data: PachetCreate,
+    session: AsyncSession,
+    request: Request,
+    owner_id: int
+) -> PachetResponse:
+    pachet = Pachet(id_owner=owner_id, **data.model_dump())
     session.add(pachet)
     await session.commit()
     await session.refresh(pachet)
@@ -75,7 +80,7 @@ async def create_pachet(data: PachetCreate, session: AsyncSession, request: Requ
     return _build_pachet_response(pachet, request)
 
 
-async def update_pachet(id: int, data: PachetCreate, session: AsyncSession, request: Request) -> PachetResponse:
+async def update_pachet(id: int, data: PachetCreate, session: AsyncSession, request: Request, user_id: int, role: str) -> PachetResponse:
     result = await session.execute(select(Pachet).where(Pachet.id == id))
     pachet = result.scalars().first()
     if not pachet:
@@ -91,7 +96,7 @@ async def update_pachet(id: int, data: PachetCreate, session: AsyncSession, requ
     return _build_pachet_response(pachet, request)
 
 
-async def delete_pachet(id: int, session: AsyncSession):
+async def delete_pachet(id: int, session: AsyncSession, user_id: int, role: str):
     pachet = await _get_pachet_db(session, id)
 
     sold_query = select(func.count(Bilet.cod)).where(Bilet.pachetID == id)
@@ -147,7 +152,14 @@ async def get_pachet_events(id: int, session: AsyncSession, request: Request) ->
     )
 
 
-async def get_pachet_ticket(pachet_id: int, ticket_cod: str, session: AsyncSession, request: Request) -> BiletResponse:
+async def get_pachet_ticket(
+    pachet_id: int,
+    ticket_cod: str,
+    session: AsyncSession,
+    request: Request,
+    user_id: int,
+    role: str
+) -> BiletResponse:
     await _get_pachet_db(session, pachet_id)
     query = (
         select(Bilet)
@@ -158,21 +170,33 @@ async def get_pachet_ticket(pachet_id: int, ticket_cod: str, session: AsyncSessi
     res = await session.execute(query)
     ticket = res.scalars().first()
     if not ticket:
+        raise HTTPException(status_code=404, detail="Biletul nu a fost gasit")
+
+    if role == "client" and ticket.id_utilizator != user_id:
         raise HTTPException(
-            status_code=404,
-            detail=f"Biletul cu codul {ticket_cod} n-a fost gasite pentru pachetul cu id-ul {pachet_id}"
+            status_code=403,
+            detail="Nu aveti permisiunea de a vizualiza acest bilet"
         )
 
     return _build_bilet_response(ticket, request)
+
 
 async def get_all_pachet_tickets(
         pachet_id: int,
         session: AsyncSession,
         page: int,
-        per_page: int
+        per_page: int,
+        user_id: int,
+        role: str
 ) -> PaginatedResponse[BiletResponse]:
     await _get_pachet_db(session, pachet_id)
-    query = select(Bilet).where(Bilet.pachetID == pachet_id).order_by(Bilet.cod.desc())
+
+    query = select(Bilet).where(Bilet.pachetID == pachet_id)
+
+    if role == "client":
+        query = query.where(Bilet.id_utilizator == user_id)
+
+    query = query.order_by(Bilet.cod.desc())
 
     return await paginate(
         query=query,

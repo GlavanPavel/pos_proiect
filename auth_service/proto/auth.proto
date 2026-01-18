@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc Login (LoginRequest) returns (TokenResponse);
+  rpc ValidateToken (TokenRequest) returns (UserIdentity);
+
+  rpc Logout (TokenRequest) returns (LogoutResponse);
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message TokenResponse {
+  string token_value = 1;
+}
+
+message TokenRequest {
+  string token = 1;
+}
+
+message UserIdentity {
+  string sub = 1; // email-ul (pt mongo)
+  string role = 2;
+  string message = 3;
+  int32 user_id = 4; // id-ul (pentru mariadb)
+}
+
+message LogoutResponse {
+  bool success = 1;
+  string message = 2;
+}

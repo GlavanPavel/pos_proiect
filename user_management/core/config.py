@@ -10,10 +10,13 @@ class Settings(BaseSettings):
     MONGO_APP_USER: str
     MONGO_APP_PASS: str
     MONGO_AUTH_SOURCE: str
-    MONGO_HOST: str = "localhost"
+    MONGO_HOST: str = "mongo"
     MONGO_PORT: int = 27017
 
-    EVENIMENTE_SERVICE_URL: str = "http://localhost:8001"
+    SERVICE_USERNAME: str
+    SERVICE_PASSWORD: str
+
+    EVENIMENTE_SERVICE_URL: str
 
     @computed_field
     @property

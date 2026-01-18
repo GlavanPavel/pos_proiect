@@ -11,8 +11,15 @@ from .builder import _build_bilet_response
 from .helper import _get_ticket_db, _get_pachet_db, _get_event_db, get_pachet_availability, get_event_available_seats
 
 
-async def get_ticket(cod: str, session: AsyncSession, request: Request) -> BiletResponse:
+async def get_ticket(cod: str, session: AsyncSession, request: Request, user_id: int, role: str) -> BiletResponse:
     ticket = await _get_ticket_db(cod, session)
+
+    # Managerul poate vedea biletul doar dacă deține evenimentul/pachetul
+    if role == "owner-event":
+        is_owner = await _check_ticket_ownership_for_manager(session, ticket, user_id)
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Acces interzis")
+
     return _build_bilet_response(ticket, request)
 
 async def verify_ticket(data: BiletCreate, session: AsyncSession):
@@ -65,14 +72,28 @@ async def create_ticket(data: BiletCreate, session: AsyncSession, request: Reque
     )
 
     session.add(ticket)
-    await session.commit()
+    try:
+        await session.commit()
+        await session.refresh(ticket)
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Eroare la salvarea biletului în baza de date SQL"
+        )
 
     return _build_bilet_response(ticket, request)
 
-async def update_ticket(cod: str, data: BiletCreate, session: AsyncSession, request: Request) -> BiletResponse:
-    await verify_ticket(data, session)
 
+async def update_ticket(cod: str, data: BiletCreate, session: AsyncSession, request: Request, user_id: int, role: str) -> BiletResponse:
+    await verify_ticket(data, session)
     ticket = await _get_ticket_db(cod, session)
+
+    if role == "owner-event":
+        is_owner = await _check_ticket_ownership_for_manager(session, ticket, user_id)
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Nu puteti modifica biletele altor manageri")
+
 
     update_data = data.model_dump()
     for field, value in update_data.items():
@@ -83,9 +104,25 @@ async def update_ticket(cod: str, data: BiletCreate, session: AsyncSession, requ
     await session.refresh(ticket)
     return _build_bilet_response(ticket, request)
 
-async def delete_ticket(cod: str, session: AsyncSession):
+
+async def delete_ticket(cod: str, session: AsyncSession, user_id: int, role: str):
     ticket = await _get_ticket_db(cod, session)
+
+    if role == "owner-event":
+        is_owner = await _check_ticket_ownership_for_manager(session, ticket, user_id)
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Acces interzis")
 
     await session.delete(ticket)
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+async def _check_ticket_ownership_for_manager(session: AsyncSession, ticket: Bilet, user_id: int) -> bool:
+    if ticket.evenimentID:
+        event = await _get_event_db(session, ticket.evenimentID)
+        return event.id_owner == user_id
+    if ticket.pachetID:
+        packet = await _get_pachet_db(session, ticket.pachetID)
+        return packet.id_owner == user_id
+    return False

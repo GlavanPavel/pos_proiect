@@ -1,14 +1,14 @@
 services:
   mongo:
+    container_name: mongo-db
     image: mongo
     restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+    networks: [ pos_network ]
+    ports: [ "27017:27017" ]
+    volumes: [ mongo_data:/data/db ]
 
   mongo-express:
     image: mongo-express
@@ -16,30 +16,125 @@ services:
     ports:
       - "8081:8081"
     environment:
-      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
-      ME_CONFIG_BASICAUTH_ENABLED: true
-      ME_CONFIG_BASICAUTH_USERNAME: user
-      ME_CONFIG_BASICAUTH_PASSWORD: pass
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/
+    networks:
+      - pos_network
+    depends_on:
+      - mongo
 
   db:
+    container_name: mariadb-event
     image: mariadb
     restart: always
     environment:
       MARIADB_ROOT_PASSWORD: ${ROOT_DB_PASS}
       MARIADB_DATABASE: ${DB_NAME}
-
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASS}
+    networks: [ pos_network ]
+    ports: [ "3306:3306" ]
+    volumes: [ db_data:/var/lib/mysql ]
 
 
   adminer:
     image: adminer
+    container_name: sql-admin
     restart: always
+    networks:
+      - pos_network
     ports:
-      - 8080:8080
+      - "8085:8080"
+
+  # identity management database
+  idm-db:
+    container_name: mariadb-idm
+    image: mariadb
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: root_pass_idm
+      MARIADB_DATABASE: idm_database
+      MARIADB_USER: idm_user
+      MARIADB_PASSWORD: idm_password
+    networks:
+      - pos_network
+    ports:
+      - "3307:3306"
+    volumes:
+      - idm_data:/var/lib/mysql
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    container_name: idm-service
+    depends_on: [ idm-db ]
+    environment:
+      - DB_USER=idm_user
+      - DB_PASS=idm_password
+      - DB_HOST=mariadb-idm
+      - DB_PORT=3306
+      - DB_NAME=idm_database
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+    ports: [ "50051:50051" ]
+    networks: [ pos_network ]
+
+  event-service:
+    build:
+      context: .
+      dockerfile: fastapi_app/Dockerfile
+    container_name: evenimente-service
+    depends_on: [ db, auth-service ]
+    environment:
+      - ROOT_DB_PASS=${ROOT_DB_PASS}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_HOST=mariadb-event
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - IDM_HOST=idm-service
+      - IDM_PORT=50051
+    ports: [ "8000:8000" ]
+    networks: [ pos_network ]
+
+
+  client-service:
+    build:
+      context: .
+      dockerfile: user_management/Dockerfile
+    container_name: clienti-service
+    depends_on: [ mongo, event-service, auth-service ]
+    environment:
+      - MONGO_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/
+      - MONGO_APP_USER=${MONGO_APP_USER}
+      - MONGO_APP_PASS=${MONGO_APP_PASS}
+      - MONGO_AUTH_SOURCE=${MONGO_AUTH_SOURCE}
+      - SERVICE_USERNAME=${SERVICE_USERNAME}
+      - SERVICE_PASSWORD=${SERVICE_PASSWORD}
+      - EVENIMENTE_SERVICE_URL=${EVENIMENTE_SERVICE_URL}
+      - IDM_HOST=idm-service
+      - IDM_PORT=50051
+    ports: [ "8001:8001" ]
+    networks: [ pos_network ]
+
+  envoy:
+    image: envoyproxy/envoy:v1.33-latest
+    container_name: envoy-proxy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml
+    networks:
+      - pos_network
+    depends_on:
+      - auth-service
+
+networks:
+  pos_network:
+    driver: bridge
 
 volumes:
   db_data:
   mongo_data:
+  idm_data:

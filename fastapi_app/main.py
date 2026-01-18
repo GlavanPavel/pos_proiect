@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi_app.core.database import sessionmanager
 from fastapi_app.core.middlewares import middleware
-from .routers import event_manager
+from fastapi_app.routers import event_manager
 
 
 @asynccontextmanager

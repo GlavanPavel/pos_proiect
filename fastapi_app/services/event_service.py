@@ -75,8 +75,17 @@ async def get_event(session: AsyncSession, id: int, request: Request) -> Evenime
     return _build_event_response(event, request)
 
 
-async def create_event(session: AsyncSession, data: EvenimentCreate, request: Request) -> EvenimentResponse:
-    event = Eveniment(**data.model_dump())
+async def create_event(
+        session: AsyncSession,
+        data: EvenimentCreate,
+        request: Request,
+        owner_id: int
+) -> EvenimentResponse:
+    event_dict = data.model_dump()
+    # id-ul e luat din token
+    event_dict["id_owner"] = owner_id
+
+    event = Eveniment(**event_dict)
     session.add(event)
     await session.commit()
     await session.refresh(event)
@@ -84,7 +93,7 @@ async def create_event(session: AsyncSession, data: EvenimentCreate, request: Re
     return _build_event_response(event, request)
 
 
-async def update_event(session: AsyncSession, id: int, data: EvenimentUpdate, request: Request) -> EvenimentResponse:
+async def update_event(session: AsyncSession, id: int, data: EvenimentUpdate, request: Request, user_id: int, role: str) -> EvenimentResponse:
     event = await _get_event_db(session, id)
 
     update_data = data.model_dump(exclude_unset=True)
@@ -97,7 +106,7 @@ async def update_event(session: AsyncSession, id: int, data: EvenimentUpdate, re
     return _build_event_response(event, request)
 
 
-async def delete_event(session: AsyncSession, id: int):
+async def delete_event(session: AsyncSession, id: int, user_id: int, role: str):
     event = await _get_event_db(session, id)
 
     sold_query = select(func.count(Bilet.cod)).where(Bilet.evenimentID == id)
@@ -159,9 +168,8 @@ async def get_event_packets(session: AsyncSession, id: int, request: Request) ->
     )
 
 
-async def get_event_ticket(event_id, ticket_cod, session, request) -> BiletResponse:
-    await _get_event_db(session, event_id) # pentru a verifica daca evenimentul exista
-
+async def get_event_ticket(event_id, ticket_cod, session, request, user_id, role) -> BiletResponse:
+    await _get_event_db(session, event_id)
     query = (
         select(Bilet)
         .where(Bilet.cod == ticket_cod)
@@ -176,16 +184,30 @@ async def get_event_ticket(event_id, ticket_cod, session, request) -> BiletRespo
             detail=f"Biletul cu codul {ticket_cod} n-a fost gasit pentru evenimentul cu id-ul {event_id}"
         )
 
+    if role == "client" and ticket.id_utilizator != user_id:
+        raise HTTPException(status_code=403, detail="Acces interzis la biletul altui utilizator")
+
     return _build_bilet_response(ticket, request)
+
 
 async def get_all_event_tickets(
         event_id: int,
         session: AsyncSession,
         page: int,
-        per_page: int
+        per_page: int,
+        user_id: int,  # Parametru nou
+        role: str  # Parametru nou
 ) -> PaginatedResponse[BiletResponse]:
     await _get_event_db(session, event_id)
-    query = select(Bilet).where(Bilet.evenimentID == event_id).order_by(Bilet.cod.desc())
+
+    query = select(Bilet).where(Bilet.evenimentID == event_id)
+
+    # daca utlizatorul e client vede doar biletele lui
+    if role == "client":
+        query = query.where(Bilet.id_utilizator == user_id)
+
+    # daca e owner atunci poate vedea toate biletele pt evenimentul sau
+    query = query.order_by(Bilet.cod.desc())
 
     return await paginate(
         query=query,

@@ -7,102 +7,85 @@ from fastapi_app.schemas.pachet import (
 )
 from fastapi_app.schemas.bilet import BiletResponse
 from fastapi_app.schemas.eveniment import EvenimentCollectionResponse
+from ..core.RoleChecker import RoleChecker
 from ..schemas import PaginatedResponse, PachetFilterParams, PachetEventAssociationResponse
 from ..services import get_all_packets
 
+from fastapi_app.core.security import verify_authorization
+
+
 router = APIRouter(prefix="/event-packets", tags=["pachete"])
 
-@router.get(
-    "/",
-    name="get_all_packets",
-    response_model=PaginatedResponse[PachetResponse]
-)
+# rute accesibile oricarui utlizator
+
+@router.get("/", name="get_all_packets", response_model=PaginatedResponse[PachetResponse])
 async def get_all_events_route(
         session: SessionDep,
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=100),
-        filters: PachetFilterParams = Depends()
+        filters: PachetFilterParams = Depends(),
+        user: dict = Depends(verify_authorization)
 ):
-    return await get_all_packets(
-        page=page,
-        per_page=per_page,
-        session=session,
-        filters=filters
-    )
+    return await get_all_packets(page=page, per_page=per_page, session=session, filters=filters)
 
-
-@router.get(
-    "/{id}",
-    name="get_pachet",
-    response_model=PachetResponse
-)
+@router.get("/{id}", name="get_pachet", response_model=PachetResponse)
 async def get_pachet_route(
         id: int,
         session: SessionDep,
-        request: Request
+        request: Request,
+        user: dict = Depends(verify_authorization)
 ):
     return await services.get_pachet(id, session, request)
 
-@router.post(
-    "/",
-    name="create_pachet",
-    response_model=PachetResponse,
-    status_code=status.HTTP_201_CREATED
-)
+@router.get("/{id}/events", name="get_pachet_events", response_model=EvenimentCollectionResponse)
+async def get_pachet_events_route(
+        id: int,
+        session: SessionDep,
+        request: Request,
+        user: dict = Depends(verify_authorization)
+):
+    return await services.get_pachet_events(id, session, request)
+
+# rute pt admin si owner
+
+@router.post("/", name="create_pachet", response_model=PachetResponse, status_code=status.HTTP_201_CREATED)
 async def create_pachet_route(
         data: PachetCreate,
         session: SessionDep,
-        request: Request
+        request: Request,
+        user: dict = Depends(RoleChecker(["admin", "owner-event"]))
 ):
-    return await services.create_pachet(data, session, request)
+    return await services.create_pachet(data, session, request, owner_id=user["user_id"])
 
-@router.put(
-    "/{id}",
-    name="update_pachet",
-    response_model=PachetResponse
-)
+@router.put("/{id}", name="update_pachet", response_model=PachetResponse)
 async def update_pachet_route(
         id: int,
         data: PachetCreate,
         session: SessionDep,
-        request: Request
+        request: Request,
+        user: dict = Depends(RoleChecker(["admin", "owner-event"], check_ownership=True))
 ):
-    return await services.update_pachet(id, data, session, request)
+    return await services.update_pachet(id, data, session, request, user_id=user["user_id"], role=user["role"])
 
-@router.delete(
-    "/{id}",
-    name="delete_pachet",
-    status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/{id}", name="delete_pachet", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_pachet_route(
         id: int,
-        session: SessionDep
-):
-    return await services.delete_pachet(id, session)
-
-@router.get(
-    "/{id}/events",
-    name="get_pachet_events",
-    response_model=EvenimentCollectionResponse
-)
-async def get_pachet_events_route(
-        id: int,
         session: SessionDep,
-        request: Request
+        user: dict = Depends(RoleChecker(["admin", "owner-event"], check_ownership=True))
 ):
-    return await services.get_pachet_events(id, session, request)
+    return await services.delete_pachet(id, session, user_id=user["user_id"], role=user["role"])
 
-@router.put(
-    "/{pachet_id}/events/{event_id}",
-    name="add_event_to_pachet",
-    response_model=PachetEventAssociationResponse
-)
+# rute pt gestiune relatii
+
+@router.put("/{pachet_id}/events/{event_id}", name="add_event_to_pachet", response_model=PachetEventAssociationResponse)
 async def add_event_to_pachet_route(
         pachet_id: int,
         event_id: int,
         data: PachetEventAssociation,
         session: SessionDep,
-        request: Request
+        request: Request,
+        # trebuie sa fii owner pt a putea adauga evenimente in pachet
+        user: dict = Depends(RoleChecker(["admin", "owner-event"], check_ownership=True))
 ):
     return await services.add_event_to_pachet(
         pachet_id=pachet_id,
@@ -112,43 +95,37 @@ async def add_event_to_pachet_route(
         request=request
     )
 
-@router.delete(
-    "/{pachet_id}/events/{event_id}",
-    name="delete_event_from_pachet",
-    status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/{pachet_id}/events/{event_id}", name="delete_event_from_pachet", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_event_from_pachet_route(
         pachet_id: int,
         event_id: int,
         session: SessionDep,
+        user: dict = Depends(RoleChecker(["admin", "owner-event"], check_ownership=True))
 ):
-    return await services.delete_event_from_pachet(
-        pachet_id=pachet_id,
-        event_id=event_id,
-        session=session,
-    )
+    return await services.delete_event_from_pachet(pachet_id=pachet_id, event_id=event_id, session=session)
 
-@router.get(
-    "/{pachet_id}/tickets/",
-    name="get_all_pachet_tickets",
-    response_model=PaginatedResponse[BiletResponse]
-)
+# bilete pachet
+
+@router.get("/{pachet_id}/tickets/", name="get_all_pachet_tickets", response_model=PaginatedResponse[BiletResponse])
 async def get_all_pachet_tickets_route(
         session: SessionDep,
         pachet_id: int,
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=100),
+        user: dict = Depends(verify_authorization) # Serviciul va filtra după rol [cite: 622, 623]
 ):
-    return await services.get_all_pachet_tickets(pachet_id, session, page, per_page)
-@router.get(
-    "/{pachet_id}/tickets/{ticket_cod}",
-    name="get_pachet_ticket",
-    response_model=BiletResponse
-)
+    return await services.get_all_pachet_tickets(
+        pachet_id, session, page, per_page, user_id=user["user_id"], role=user["role"]
+    )
+
+@router.get("/{pachet_id}/tickets/{ticket_cod}", name="get_pachet_ticket", response_model=BiletResponse)
 async def get_pachet_ticket_route(
         pachet_id: int,
         ticket_cod: str,
         session: SessionDep,
-        request: Request
+        request: Request,
+        user: dict = Depends(verify_authorization)
 ):
-    return await services.get_pachet_ticket(pachet_id, ticket_cod, session, request)
+    return await services.get_pachet_ticket(
+        pachet_id, ticket_cod, session, request, user_id=user["user_id"], role=user["role"]
+    )
