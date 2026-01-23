@@ -1,5 +1,5 @@
 ### Detalii proiect
-Totul cu exceptia la frontend e conteinerizat. Unele containere (cele 3 servicii) au nevoie sa aiba baza de date initializata.
+Totul cu exceptia la frontend e containerizat. Unele containere (cele 3 servicii) au nevoie sa aiba baza de date initializata.
 Cu toate ca as fi putut automatiza acest proces cu includerea comenzilor in docker compose, am decis sa fac totul manual cu:
 ```
 docker exec -it clienti-service python -m user_management.init_mongo
