@@ -8,8 +8,7 @@ This project is a full-stack platform designed to manage artistic events and tra
 * **Client WebService:** A backend service that manages client profiles and purchased tickets (FastAPI + MongoDB).
 * **Auth Service:** An Identity Management (IDM) service for managing users and roles (gRPC + SQL).
 
-<img width="1516" height="1892" alt="image" src="https://github.com/user-attachments/assets/2edd3895-966b-4cf0-8ec1-89ae46f146c5" />
-
+<img width="800" alt="Diagrama Arhitectura" src="https://github.com/user-attachments/assets/2edd3895-966b-4cf0-8ec1-89ae46f146c5" />
 
 ## Project Details
 * **Containerization:** All backend services and databases are containerized using Docker. The React frontend is run locally outside of Docker.
