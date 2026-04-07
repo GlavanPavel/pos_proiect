@@ -1,37 +1,48 @@
-### Detalii proiect
-Totul cu exceptia la frontend e containerizat. Unele containere (cele 3 servicii) au nevoie sa aiba baza de date initializata.
-Cu toate ca as fi putut automatiza acest proces cu includerea comenzilor in docker compose, am decis sa fac totul manual cu:
+# Event Management Platform
+
+## Description
+This project is a full-stack platform designed to manage artistic events and track ticket sales. The system is built using a Service-Oriented Architecture (SOA), featuring a React frontend that communicates with three backend services:
+
+* **Frontend:** A web application built with React to handle user interfaces for clients, event managers, and administrators.
+* **Event WebService:** A backend service that manages events, event packages, and tickets (FastAPI + MariaDB).
+* **Client WebService:** A backend service that manages client profiles and purchased tickets (FastAPI + MongoDB).
+* **Auth Service:** An Identity Management (IDM) service for managing users and roles (gRPC + SQL).
+
+<img width="1516" height="1892" alt="image" src="https://github.com/user-attachments/assets/2edd3895-966b-4cf0-8ec1-89ae46f146c5" />
+
+
+## Project Details
+* **Containerization:** All backend services and databases are containerized using Docker. The React frontend is run locally outside of Docker.
+* **Architecture:** The backend services communicate with each other using HTTP (REST) and gRPC protocols.
+
+## Running and Initializing the Application
+
+### 1. Start the Backend Services
+Spin up the backend containers using Docker Compose:
+
+```bash
+docker-compose up -d
 ```
+
+### 2. Initialize the Databases
+Although the database initialization process could have been automated within the docker-compose file, it was left manual.
+
+```bash
+# Create tables for the events service
+docker exec -it evenimente-service python fastapi_app/create_tables.py
+
+# Initialize databases and populate initial data
 docker exec -it clienti-service python -m user_management.init_mongo
 docker exec -it evenimente-service python -m fastapi_app.events_init
 docker exec -it idm-service python -m auth_service.init_idm
-
-docker exec -it evenimente-service python fastapi_app/create_tables.py
 ```
-Sunt generati 4 utilizatori in baza de date din auth_service (creati in auth_service/init_idm.py).
 
+### 3. Start the React Frontend
+```bash
+cd frontend
+npm install
+npm start
+```
 
-# POS - solutii proiect
-
-| **Deadline&nbsp;general** | **_18.01.2026_** (_duminica, S14_) |
-| :--- | :--- |
-| **_Branch_ proiect** | Acest _branch_ va fi folosit de studentii care doresc sa dezvolte proiectul propus pentru disciplina. _Commit_-urile trebuie realizate saptamanal. Codurile sursa vor fi organizate pe module, iar in cadrul fiecauri astfel de modul se vor incarca un set de _log_-uri demonstrative. |
-| **_Branch_&nbsp;laborator** | Acest _branch_ va fi folosit de studentii care se vor concentra doar pe aplicatiile de baza propuse. Pentru fiecare laborator se va crea cate un director separat in cadrul caruia se vor incarca fisierele sursa, alaturi de un set de _log_-uri demonstrative.<br/><br/>**_Fiecare laborator are un deadline de maxim doua saptamani de la data finalizarii acestuia!! Commit-urile ulterioare NU vor fi considerate in evaluare_** |
-
-## Evaluare
-
-Evaluarea activitatii de laborator consta in evaluarea solutiilor incarcate, urmarind:
-
-- respectarea standardelor si a recomandarilor corespuzatoare tipului de serviciu analizat;
-- calitatea codului sursa;
-- gradul de indeplinire a cerintelor propuse.
-
-Solutiile **_remarcabile_** pot atrage bonusuri pentru nota de examen/media corespunzatoare disciplinei. **_Revedeti documentul de prezentare a disciplinei, disponibil pe platforma_** <https://edu.tuiasi.ro/>.
-
-## Link-uri utile
-
-1. **Markdown** - limbaj de prezentare "pretty" pentru o documentatie `git` (in cazul in care considerati utila o scurta descriere a implementarii <https://www.markdownguide.org>)
-	- sintaxa de baza: <https://www.markdownguide.org/basic-syntax/>
-	- _cheat-sheet_: <https://www.markdownguide.org/cheat-sheet/>
-2. **Github** - comenzi uzuale: <https://education.github.com/git-cheat-sheet-education.pdf>
-
+## API Documentation
+After initialization, the interactive Swagger documentation for the backend APIs can be accessed locally at their default routes (e.g., `http://localhost:8000/docs`).
